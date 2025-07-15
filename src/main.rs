@@ -1,10 +1,9 @@
-use std::fs::File;
-use std::io::Read;
-use std::path::PathBuf;
-
 use clap::{Parser, Subcommand, ValueEnum};
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
+use std::fs::File;
+use std::io::Read;
+use std::path::PathBuf;
 
 #[derive(Parser)]
 struct Cli {
