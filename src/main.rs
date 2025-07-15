@@ -46,14 +46,21 @@ fn main() {
             status,
             description,
         } => {
-            let task = Task {
+            let _task = Task {
                 status,
                 description,
             };
         }
         Command::Delete => todo!(),
         Command::Update => todo!(),
-        Command::List => todo!(),
+        Command::List => match load_tasks() {
+            Ok(tasks) => {
+                println!("{:#?}", tasks);
+            }
+            Err(error) => {
+                eprintln!("{}", error);
+            }
+        },
     }
 }
 
