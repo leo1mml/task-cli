@@ -1,3 +1,4 @@
+use anyhow::Error;
 use clap::{Parser, Subcommand, ValueEnum};
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
@@ -56,7 +57,7 @@ fn main() {
     }
 }
 
-fn load_tasks() -> Result<Vec<Task>, Box<dyn std::error::Error>> {
+fn load_tasks() -> Result<Vec<Task>, Error> {
     if let Some(file_path_buf) = get_tasks_file_path() {
         let mut file = File::open(file_path_buf)?;
         let mut content = String::new();
@@ -67,7 +68,7 @@ fn load_tasks() -> Result<Vec<Task>, Box<dyn std::error::Error>> {
         let tasks: Vec<Task> = serde_json::from_str(&content)?;
         Ok(tasks)
     } else {
-        Err(Box::new(std::io::Error::new(
+        Err(Error::new(std::io::Error::new(
             std::io::ErrorKind::NotFound, // Or `ErrorKind::Other`
             "Could not determine a suitable path for task storage.",
         )))
