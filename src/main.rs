@@ -49,6 +49,7 @@ fn generate_uuid() -> Uuid {
 }
 
 #[derive(Debug, Clone, ValueEnum, Serialize, Deserialize)]
+#[clap(rename_all = "lower")]
 enum TaskStatus {
     Todo,
     InProgress,
@@ -88,12 +89,13 @@ fn main() {
 
 fn write_tasks(task: Task) -> Result<(), Error> {
     if let Some(file_path_buf) = get_tasks_file_path() {
+        if !file_path_buf.exists() {
+            File::create(&file_path_buf)?;
+        }
         match File::open(&file_path_buf) {
             Ok(file) => write_task_to_file(task, file)?,
             Err(e) => {
                 eprintln!("{:#?}", Error::new(e));
-                let file = File::create(file_path_buf)?;
-                write_task_to_file(task, file)?;
             }
         }
         Ok(())
