@@ -6,6 +6,10 @@ use crossterm::{
     terminal::{Clear, ClearType},
 };
 
+pub fn print_invalid_value() {
+    println!("The value is invalid, please try again. (Press 'Q' to quit to the initial screen.)");
+}
+
 pub fn ask_for_status() {
     println!("Add the status for this task:");
     println!("  (1) In Progress");
