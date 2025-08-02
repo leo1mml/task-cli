@@ -50,6 +50,7 @@ impl Cli {
             match read() {
                 Ok(Event::Key(key_event)) => {
                     let Some(command) = self.command_for_event(key_event) else {
+                        disable_raw_mode();
                         break;
                     };
                     let _ = self.run_command(command);
@@ -60,6 +61,23 @@ impl Cli {
         }
         Ok(())
     }
+
+    fn listen_for_key(&self) -> Result<char, Error> {
+        loop {
+            enable_raw_mode()?;
+            let Ok(Event::Key(event)) = read() else {
+                _ = disable_raw_mode();
+                continue;
+            };
+            let KeyCode::Char(character) = event.code else {
+                _ = disable_raw_mode();
+                continue;
+            };
+            _ = disable_raw_mode();
+            return Ok(character);
+        }
+    }
+
     fn command_for_event(&self, event: KeyEvent) -> Option<Command> {
         match event.code {
             KeyCode::Char(c) => match c.to_ascii_lowercase() {
