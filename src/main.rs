@@ -8,9 +8,9 @@ use clap::Parser;
 use cli::{Cli, CliInteraction};
 
 fn main() -> Result<(), Error> {
-    let cli = Cli::parse();
+    let mut cli = Cli::parse();
 
-    if let Some(ref command) = cli.command {
+    if let Some(command) = cli.command.take() {
         cli.run_command(command)
     } else {
         cli.loop_for_commands();

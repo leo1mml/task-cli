@@ -25,13 +25,13 @@ impl CliInteraction for Cli {
         }
     }
 
-    fn run_command(&self, command: &Command) -> Result<(), Error> {
+    fn run_command(&self, command: Command) -> Result<(), Error> {
         match command {
             Command::Add {
                 status,
                 description,
             } => {
-                let task = Task::new(status.clone(), description.clone());
+                let task = Task::new(status, description);
                 write_tasks(task)
             }
             Command::Delete => todo!(),
@@ -52,7 +52,7 @@ impl Cli {
                     let Some(command) = self.command_for_event(key_event) else {
                         break;
                     };
-                    let _ = self.run_command(&command);
+                    let _ = self.run_command(command);
                 }
                 _ => eprintln!("Error when reading event."),
             }
@@ -62,7 +62,10 @@ impl Cli {
     }
     fn command_for_event(&self, event: KeyEvent) -> Option<Command> {
         match event.code {
-            KeyCode::Char('a') => self.make_add_command(),
+            KeyCode::Char(c) => match c.to_ascii_lowercase() {
+                'a' => self.make_add_command(),
+                _ => None,
+            },
             _ => None,
         }
     }
@@ -123,7 +126,7 @@ pub fn wait_for_any_key() -> Result<(), Error> {
 
 pub trait CliInteraction {
     fn loop_for_commands(&self);
-    fn run_command(&self, command: &Command) -> Result<(), Error>;
+    fn run_command(&self, command: Command) -> Result<(), Error>;
 }
 
 #[derive(Debug, Subcommand)]
