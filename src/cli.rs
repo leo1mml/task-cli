@@ -20,8 +20,16 @@ pub struct Cli {
 impl CliInteraction for Cli {
     fn loop_for_commands(&self) {
         loop {
-            self.read_command()
-                .expect("Could not read the given command");
+            match self.read_command() {
+                Ok(command) => {
+                    if let Err(error) = self.run_command(command) {
+                        return eprintln!("{error:?}");
+                    }
+                    _ = self.listen_for_key();
+                    continue;
+                }
+                Err(_) => todo!(),
+            }
         }
     }
 
@@ -42,24 +50,15 @@ impl CliInteraction for Cli {
 }
 
 impl Cli {
-    fn read_command(&self) -> Result<(), Error> {
+    fn read_command(&self) -> Result<Command, Error> {
         clear_and_reset();
         present_commands_prompt();
-        loop {
-            enable_raw_mode()?;
-            match read() {
-                Ok(Event::Key(key_event)) => {
-                    let Some(command) = self.command_for_event(key_event) else {
-                        disable_raw_mode();
-                        break;
-                    };
-                    let _ = self.run_command(command);
-                }
-                _ => eprintln!("Error when reading event."),
-            }
-            disable_raw_mode()?;
-        }
-        Ok(())
+        let code = self.listen_for_key()?;
+        let Some(command) = self.command_for_event(code) else {
+            let error = anyhow::anyhow!("Key not supported");
+            return Err(error);
+        };
+        Ok(command)
     }
 
     fn listen_for_key(&self) -> Result<char, Error> {
@@ -78,12 +77,9 @@ impl Cli {
         }
     }
 
-    fn command_for_event(&self, event: KeyEvent) -> Option<Command> {
-        match event.code {
-            KeyCode::Char(c) => match c.to_ascii_lowercase() {
-                'a' => self.make_add_command(),
-                _ => None,
-            },
+    fn command_for_event(&self, code: char) -> Option<Command> {
+        match code {
+            'a' => self.make_add_command(),
             _ => None,
         }
     }
@@ -108,8 +104,11 @@ impl Cli {
         })
     }
 
-    fn status_from_str(&self, status: String) -> Option<TaskStatus> {
-        todo!()
+    fn status_from_str(&self, status: &str) -> Option<TaskStatus> {
+        match status {
+            "1" => TaskStatus::InProgress,
+            todo!()
+        }
     }
 }
 
