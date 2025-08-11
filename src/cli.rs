@@ -1,6 +1,6 @@
 mod message_handler;
 
-use crate::{cli::message_handler::*, models::Task, storage::write_tasks};
+use crate::{cli::message_handler::*, models::Task, storage};
 use anyhow::Error;
 use clap::{Parser, Subcommand, ValueEnum};
 use crossterm::{
@@ -40,7 +40,7 @@ impl CliInteraction for Cli {
                 description,
             } => {
                 let task = Task::new(status, description);
-                write_tasks(task)
+                storage::write_tasks(task)
             }
             Command::Delete => todo!(),
             Command::Update => todo!(),
