@@ -1,20 +1,41 @@
 mod message_handler;
 
-use crate::{cli::message_handler::*, models::Task, storage};
+use crate::{
+    models::{Task, TaskStatus},
+    storage,
+};
 use anyhow::Error;
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{Parser, Subcommand};
 use crossterm::{
-    event::{Event, KeyCode, KeyEvent, KeyEventKind, read},
+    event::{Event, KeyCode, KeyEventKind, read},
     terminal::{disable_raw_mode, enable_raw_mode, is_raw_mode_enabled},
 };
-use serde::{Deserialize, Serialize};
 use std::io::stdin;
+use std::str::FromStr;
+
+pub trait CliInteraction {
+    fn loop_for_commands(&self);
+    fn run_command(&self, command: Command) -> Result<(), Error>;
+}
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Option<Command>,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum Command {
+    Add {
+        #[arg(short, long)]
+        status: TaskStatus,
+        #[arg(short, long)]
+        description: String,
+    },
+    Delete,
+    Update,
+    List,
 }
 
 impl CliInteraction for Cli {
@@ -28,7 +49,17 @@ impl CliInteraction for Cli {
                     _ = self.listen_for_key();
                     continue;
                 }
-                Err(_) => todo!(),
+                Err(error) => {
+                    println!("There has been an error.");
+                    eprint! {"{error}"};
+                    println!("Press Q to quit. Or any key to restart");
+                    let Some(key) = self.listen_for_key().ok() else {
+                        continue;
+                    };
+                    if key.eq_ignore_ascii_case(&'q') {
+                        break;
+                    }
+                }
             }
         }
     }
@@ -51,8 +82,8 @@ impl CliInteraction for Cli {
 
 impl Cli {
     fn read_command(&self) -> Result<Command, Error> {
-        clear_and_reset();
-        present_commands_prompt();
+        message_handler::clear_and_reset();
+        message_handler::present_commands_prompt();
         let code = self.listen_for_key()?;
         let Some(command) = self.command_for_event(code) else {
             let error = anyhow::anyhow!("Key not supported");
@@ -85,30 +116,25 @@ impl Cli {
     }
 
     fn make_add_command(&self) -> Option<Command> {
-        clear_and_reset();
-        ask_for_status();
+        message_handler::clear_and_reset();
+        message_handler::ask_for_status();
+        let status = match self.listen_for_key() {
+            Ok(code) => TaskStatus::from_str(&code.to_string()).ok(),
+            Err(e) => {
+                message_handler::print_invalid_value();
+                _ = wait_for_any_key();
+                message_handler::clear_and_reset();
+                return None;
+            }
+        }?;
+
         let input = stdin();
-        let mut status = String::new();
-        let _ = input.read_line(&mut status);
-        let Some(status) = self.status_from_str(status) else {
-            print_invalid_value();
-            _ = wait_for_any_key();
-            clear_and_reset();
-            return None;
-        };
         let mut description = String::new();
         _ = input.read_line(&mut description);
         Some(Command::Add {
             status,
             description,
         })
-    }
-
-    fn status_from_str(&self, status: &str) -> Option<TaskStatus> {
-        match status {
-            "1" => TaskStatus::InProgress,
-            todo!()
-        }
     }
 }
 
@@ -139,30 +165,4 @@ pub fn wait_for_any_key() -> Result<(), Error> {
     disable_raw_mode()?;
 
     Ok(())
-}
-
-pub trait CliInteraction {
-    fn loop_for_commands(&self);
-    fn run_command(&self, command: Command) -> Result<(), Error>;
-}
-
-#[derive(Debug, Subcommand)]
-pub enum Command {
-    Add {
-        #[arg(short, long)]
-        status: TaskStatus,
-        #[arg(short, long)]
-        description: String,
-    },
-    Delete,
-    Update,
-    List,
-}
-
-#[derive(Debug, Clone, ValueEnum, Serialize, Deserialize)]
-#[clap(rename_all = "lower")]
-pub enum TaskStatus {
-    Todo,
-    InProgress,
-    Done,
 }
