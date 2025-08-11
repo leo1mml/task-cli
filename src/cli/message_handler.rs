@@ -12,10 +12,10 @@ pub fn print_invalid_value() {
 
 pub fn ask_for_status() {
     println!("Add the status for this task:");
-    println!("  (1) In Progress");
-    println!("  (2) Done");
-    println!("  (3) Cancelled");
-    println!("  (4) Blocked");
+    println!("  (1) Todo");
+    println!("  (2) In Progress");
+    println!("  (3) Blocked");
+    println!("  (4) Done");
     println!();
     print_dashed_line();
 }
