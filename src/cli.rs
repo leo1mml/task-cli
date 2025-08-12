@@ -5,6 +5,7 @@ use crate::{
     storage,
 };
 use anyhow::Error;
+use anyhow::anyhow;
 use clap::{Parser, Subcommand};
 use crossterm::{
     event::{Event, KeyCode, KeyEventKind, read},
@@ -49,17 +50,17 @@ impl CliInteraction for Cli {
                     _ = self.listen_for_key();
                     continue;
                 }
-                Err(error) => {
-                    println!("There has been an error.");
-                    eprint! {"{error}"};
-                    println!("Press Q to quit. Or any key to restart");
-                    let Some(key) = self.listen_for_key().ok() else {
-                        continue;
-                    };
-                    if key.eq_ignore_ascii_case(&'q') {
+                Err(error) => match self.listen_for_key_on_error(error) {
+                    Ok(key) => {
+                        if key.eq_ignore_ascii_case(&'q') {
+                            break;
+                        }
+                    }
+                    Err(error) => {
+                        eprintln!("{}", error);
                         break;
                     }
-                }
+                },
             }
         }
     }
@@ -81,6 +82,12 @@ impl CliInteraction for Cli {
 }
 
 impl Cli {
+    fn listen_for_key_on_error(&self, error: Error) -> Result<char, Error> {
+        println!("There has been an error.");
+        eprintln! {"{error}"};
+        println!("Press Q to quit. Or any key to restart");
+        self.listen_for_key()
+    }
     fn read_command(&self) -> Result<Command, Error> {
         message_handler::clear_and_reset();
         message_handler::present_commands_prompt();
