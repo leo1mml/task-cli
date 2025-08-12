@@ -5,7 +5,6 @@ use crate::{
     storage,
 };
 use anyhow::Error;
-use anyhow::anyhow;
 use clap::{Parser, Subcommand};
 use crossterm::{
     event::{Event, KeyCode, KeyEventKind, read},
@@ -127,7 +126,7 @@ impl Cli {
         message_handler::ask_for_status();
         let status = match self.listen_for_key() {
             Ok(code) => TaskStatus::from_str(&code.to_string()).ok(),
-            Err(e) => {
+            Err(_) => {
                 message_handler::print_invalid_value();
                 _ = wait_for_any_key();
                 message_handler::clear_and_reset();
