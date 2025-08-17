@@ -20,6 +20,11 @@ pub fn ask_for_status() {
     print_dashed_line();
 }
 
+pub fn ask_for_description() {
+    println!("Now privide the description for the task:");
+    println!();
+    print_dashed_line();
+}
 fn print_dashed_line() {
     println!("--------------------------------------------");
 }

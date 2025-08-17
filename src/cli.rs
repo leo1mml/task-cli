@@ -75,7 +75,11 @@ impl CliInteraction for Cli {
             }
             Command::Delete => todo!(),
             Command::Update => todo!(),
-            Command::List => todo!(),
+            Command::List => {
+                let tasks = storage::load_tasks();
+                println!("{tasks:#?}");
+                Ok(())
+            }
         }
     }
 }
@@ -90,7 +94,7 @@ impl Cli {
     fn read_command(&self) -> Result<Command, Error> {
         message_handler::clear_and_reset();
         message_handler::present_commands_prompt();
-        let code = self.listen_for_key()?;
+        let code = self.listen_for_key()?.to_ascii_lowercase();
         let Some(command) = self.command_for_event(code) else {
             let error = anyhow::anyhow!("Key not supported");
             return Err(error);
@@ -117,6 +121,9 @@ impl Cli {
     fn command_for_event(&self, code: char) -> Option<Command> {
         match code {
             'a' => self.make_add_command(),
+            'l' => Some(Command::List),
+            'd' => todo!(),
+            'u' => todo!(),
             _ => None,
         }
     }
@@ -133,6 +140,9 @@ impl Cli {
                 return None;
             }
         }?;
+
+        message_handler::clear_and_reset();
+        message_handler::ask_for_description();
 
         let input = stdin();
         let mut description = String::new();
