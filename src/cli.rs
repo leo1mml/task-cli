@@ -33,7 +33,10 @@ pub enum Command {
         #[arg(short, long)]
         description: String,
     },
-    Delete,
+    Delete {
+        #[arg(long)]
+        id: String,
+    },
     Update,
     List,
 }
@@ -71,9 +74,9 @@ impl CliInteraction for Cli {
                 description,
             } => {
                 let task = Task::new(status, description);
-                storage::write_tasks(task)
+                storage::write_task(task)
             }
-            Command::Delete => todo!(),
+            Command::Delete { id } => storage::remove_task(&id),
             Command::Update => todo!(),
             Command::List => {
                 let tasks = storage::load_tasks();

@@ -1,5 +1,5 @@
 use crate::models::Task;
-use anyhow::Error;
+use anyhow::{Error, anyhow};
 use directories::ProjectDirs;
 use serde_json::{from_reader, to_writer_pretty};
 use std::fs::File;
@@ -49,7 +49,7 @@ fn write_task_to_file(tasks: &Vec<Task>, file: File) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn write_tasks(task: Task) -> Result<(), Error> {
+pub fn write_task(task: Task) -> Result<(), Error> {
     let file_path = get_tasks_file_path()?;
 
     let mut tasks = load_tasks()?; // Load existing tasks
@@ -61,4 +61,19 @@ pub fn write_tasks(task: Task) -> Result<(), Error> {
     let file = File::create(&file_path)?; // Create or truncate the file for writing
     write_task_to_file(&tasks, file)?;
     Ok(())
+}
+
+pub fn remove_task(id: &str) -> Result<(), Error> {
+    let file_path = get_tasks_file_path()?;
+
+    let mut tasks = load_tasks()?; // Load existing tasks
+
+    if let Some(index) = tasks.iter().position(|x| x.id.to_string() == id) {
+        tasks.remove(index);
+        let file = File::create(&file_path)?; // Create or truncate the file for writing
+        write_task_to_file(&tasks, file)?;
+        Ok(())
+    } else {
+        Err(anyhow!("No item with specified id found"))
+    }
 }
