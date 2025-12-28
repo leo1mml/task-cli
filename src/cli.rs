@@ -14,8 +14,12 @@ use std::io::stdin;
 use std::str::FromStr;
 
 pub trait CliInteraction {
-    fn loop_for_commands(&self);
-    fn run_command(&self, command: Command) -> Result<(), Error>;
+    fn loop_for_commands<T: storage::TaskStorage>(&self, task_storage: &T);
+    fn run_command<T: storage::TaskStorage>(
+        &self,
+        command: Command,
+        task_storage: &T,
+    ) -> Result<(), Error>;
 }
 
 #[derive(Parser)]
@@ -42,11 +46,11 @@ pub enum Command {
 }
 
 impl CliInteraction for Cli {
-    fn loop_for_commands(&self) {
+    fn loop_for_commands<T: storage::TaskStorage>(&self, task_storage: &T) {
         loop {
             match self.read_command() {
                 Ok(command) => {
-                    if let Err(error) = self.run_command(command) {
+                    if let Err(error) = self.run_command(command, task_storage) {
                         return eprintln!("{error:?}");
                     }
                     _ = self.listen_for_key();
@@ -67,19 +71,23 @@ impl CliInteraction for Cli {
         }
     }
 
-    fn run_command(&self, command: Command) -> Result<(), Error> {
+    fn run_command<T: storage::TaskStorage>(
+        &self,
+        command: Command,
+        task_storage: &T,
+    ) -> Result<(), Error> {
         match command {
             Command::Add {
                 status,
                 description,
             } => {
                 let task = Task::new(status, description);
-                storage::write_task(task)
+                task_storage.write_task(task)
             }
-            Command::Delete { id } => storage::remove_task(&id),
+            Command::Delete { id } => task_storage.remove_task(&id),
             Command::Update => todo!(),
             Command::List => {
-                let tasks = storage::load_tasks();
+                let tasks = task_storage.load_tasks();
                 println!("{tasks:#?}");
                 Ok(())
             }
