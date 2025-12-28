@@ -41,7 +41,14 @@ pub enum Command {
         #[arg(long)]
         id: String,
     },
-    Update,
+    Update {
+        #[arg(long)]
+        id: String,
+        #[arg(short, long)]
+        status: TaskStatus,
+        #[arg(short, long)]
+        description: String,
+    },
     List,
 }
 
@@ -85,7 +92,11 @@ impl CliInteraction for Cli {
                 task_storage.write_task(task)
             }
             Command::Delete { id } => task_storage.remove_task(&id),
-            Command::Update => todo!(),
+            Command::Update {
+                id,
+                status,
+                description,
+            } => task_storage.update_task(&id, status, &description),
             Command::List => {
                 let tasks = task_storage.load_tasks();
                 println!("{tasks:#?}");

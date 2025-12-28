@@ -1,4 +1,4 @@
-use crate::models::Task;
+use crate::models::{Task, TaskStatus};
 use anyhow::{Error, anyhow};
 use directories::ProjectDirs;
 use serde_json::{from_reader, to_writer_pretty};
@@ -18,6 +18,7 @@ pub trait TaskStorage {
     fn load_tasks(&self) -> Result<Vec<Task>, Error>;
     fn write_task(&self, task: Task) -> Result<(), Error>;
     fn remove_task(&self, id: &str) -> Result<(), Error>;
+    fn update_task(&self, id: &str, status: TaskStatus, description: &str) -> Result<(), Error>;
 }
 
 impl FileStorage {
@@ -43,7 +44,7 @@ impl FileStorage {
         }
     }
 
-    fn write_task_to_file(&self, tasks: &Vec<Task>, file: File) -> Result<(), Error> {
+    fn write_tasks_to_file(&self, tasks: &Vec<Task>, file: File) -> Result<(), Error> {
         let writer = BufWriter::new(file);
         to_writer_pretty(writer, tasks)?;
         Ok(())
@@ -73,7 +74,7 @@ impl TaskStorage for FileStorage {
         tasks.push(task);
 
         let file = File::create(&file_path)?; // Create or truncate the file for writing
-        self.write_task_to_file(&tasks, file)?;
+        self.write_tasks_to_file(&tasks, file)?;
         Ok(())
     }
 
@@ -85,10 +86,25 @@ impl TaskStorage for FileStorage {
         if let Some(index) = tasks.iter().position(|x| x.id.to_string() == id) {
             tasks.remove(index);
             let file = File::create(&file_path)?; // Create or truncate the file for writing
-            self.write_task_to_file(&tasks, file)?;
+            self.write_tasks_to_file(&tasks, file)?;
             Ok(())
         } else {
             Err(anyhow!("No item with specified id found"))
         }
+    }
+
+    fn update_task(&self, id: &str, status: TaskStatus, description: &str) -> Result<(), Error> {
+        let file_path = self.get_tasks_file_path()?;
+        let mut tasks = self.load_tasks()?; // Load existing tasks
+        let Some(index) = tasks.iter().position(|x| x.id.to_string() == id) else {
+            return Err(anyhow!("No item with specified id found"));
+        };
+        let mut task = tasks.remove(index);
+        task.description = description.to_string();
+        task.status = status;
+        tasks.insert(index, task);
+        let file = File::create(&file_path)?; // Create or truncate the file for writing
+        self.write_tasks_to_file(&tasks, file)?;
+        Ok(())
     }
 }
