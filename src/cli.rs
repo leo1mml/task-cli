@@ -204,3 +204,27 @@ pub fn wait_for_any_key() -> Result<(), Error> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::storage::FileStorage;
+
+    use super::*;
+    #[test]
+    fn should_add_new_item() {
+        let cli = Cli::parse();
+        let task_storage = storage::FileStorage {
+            qualifier: "com".to_string(),
+            organization: "leo1mml".to_string(),
+            application: "task_cli".to_string(),
+            data_file_name: "test_file".to_string(),
+        };
+        let _ = cli.run_command(
+            Command::Add {
+                status: (TaskStatus::Todo),
+                description: ("Test adding something".to_string()),
+            },
+            &task_storage,
+        );
+    }
+}
