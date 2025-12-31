@@ -144,8 +144,8 @@ impl Cli {
         match code {
             'a' => self.make_add_command(),
             'l' => Some(Command::List),
-            'd' => todo!(),
-            'u' => todo!(),
+            'd' => todo!("Make delete command. It will require navigating through the list."),
+            'u' => todo!("Make update command. It will require navigating through the list."),
             _ => None,
         }
     }
