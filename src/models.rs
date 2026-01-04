@@ -19,7 +19,7 @@ impl Task {
     }
 }
 
-#[derive(Debug, Clone, clap::ValueEnum, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, clap::ValueEnum, serde::Serialize, serde::Deserialize, PartialEq)]
 #[clap(rename_all = "lower")]
 pub enum TaskStatus {
     Todo,

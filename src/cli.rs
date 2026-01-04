@@ -211,66 +211,11 @@ pub fn wait_for_any_key() -> Result<(), Error> {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::anyhow;
-    use std::cell::RefCell;
+    use uuid::Uuid;
 
-    use crate::storage::TaskStorage;
+    use crate::storage::{MockStorage, TaskStorage};
 
     use super::*;
-
-    struct MockStorage {
-        tasks: RefCell<Vec<Option<Task>>>,
-        should_have_write_error: bool,
-    }
-    impl TaskStorage for MockStorage {
-        fn load_tasks(&self) -> Result<Vec<Task>, Error> {
-            let mut storage = self.tasks.borrow_mut();
-            let tasks: Vec<Task> = storage.iter_mut().filter_map(|x| x.take()).collect();
-            Ok(tasks)
-        }
-
-        fn write_task(&self, task: Task) -> Result<(), Error> {
-            let mut storage = self.tasks.borrow_mut();
-            storage.push(Some(task));
-            if self.should_have_write_error {
-                Err(anyhow!("Write error occurred."))
-            } else {
-                Ok(())
-            }
-        }
-
-        fn remove_task(&self, id: &str) -> Result<(), Error> {
-            let mut tasks = self.tasks.borrow_mut();
-            tasks.retain(|slot| match slot {
-                Some(task) => task.id.to_string() != id,
-                None => false,
-            });
-            Ok(())
-        }
-
-        fn update_task(
-            &self,
-            id: &str,
-            status: TaskStatus,
-            description: &str,
-        ) -> Result<(), Error> {
-            if let Some(task_to_update) =
-                self.tasks
-                    .borrow_mut()
-                    .iter_mut()
-                    .find_map(|slot| match slot {
-                        Some(task) if task.id.to_string() == id => Some(task),
-                        _ => None,
-                    })
-            {
-                task_to_update.status = status;
-                task_to_update.description = description.to_string();
-                Ok(())
-            } else {
-                Err(anyhow!("Not found"))
-            }
-        }
-    }
 
     #[test]
     fn should_add_new_item() -> Result<(), Error> {
@@ -279,18 +224,79 @@ mod tests {
             tasks: vec![].into(),
             should_have_write_error: false,
         };
-        let result = cli.run_command(
+        cli.run_command(
             Command::Add {
                 status: (TaskStatus::Todo),
                 description: ("Test adding something".to_string()),
             },
             &task_storage,
-        );
-        assert!(result.is_ok());
+        )?;
         let tasks = task_storage.load_tasks()?;
         assert!(!tasks.is_empty());
         assert_eq!(tasks.len(), 1);
         assert_eq!(tasks.first().unwrap().description, "Test adding something");
+        Ok(())
+    }
+
+    #[test]
+    fn should_remove_item() -> Result<(), Error> {
+        let cli = Cli { command: None };
+        let task_storage = MockStorage {
+            tasks: vec![].into(),
+            should_have_write_error: false,
+        };
+        cli.run_command(
+            Command::Add {
+                status: (TaskStatus::Todo),
+                description: ("Test adding something".to_string()),
+            },
+            &task_storage,
+        )?;
+        let tasks = task_storage.load_tasks()?;
+        assert!(!tasks.is_empty());
+
+        let task_to_remove = tasks.first().expect("No task to remove");
+        cli.run_command(
+            Command::Delete {
+                id: task_to_remove.id.to_string(),
+            },
+            &task_storage,
+        )?;
+        let tasks = task_storage.load_tasks()?;
+        assert!(tasks.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn should_update_item() -> Result<(), Error> {
+        let cli = Cli { command: None };
+        let uuid = Uuid::new_v4();
+        let task: Task = Task {
+            id: uuid,
+            status: TaskStatus::Todo,
+            description: "Task I have to do".to_string(),
+        };
+        let task_storage = MockStorage {
+            tasks: vec![Some(task)].into(),
+            should_have_write_error: false,
+        };
+        let expected_description = "My task is done".to_string();
+
+        cli.run_command(
+            Command::Update {
+                id: uuid.to_string(),
+                status: TaskStatus::Done,
+                description: expected_description.clone(),
+            },
+            &task_storage,
+        )?;
+        let tasks = task_storage.load_tasks()?;
+        let Some(task) = tasks.iter().find(|task| task.id == uuid) else {
+            return Err(anyhow::anyhow!("Should have the modified task"));
+        };
+        assert_eq!(task.id, uuid);
+        assert_eq!(task.description.to_string(), expected_description);
+        assert_eq!(task.status, TaskStatus::Done);
         Ok(())
     }
 }

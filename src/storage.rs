@@ -2,6 +2,8 @@ use crate::models::{Task, TaskStatus};
 use anyhow::{Error, anyhow};
 use directories::ProjectDirs;
 use serde_json::{from_reader, to_writer_pretty};
+#[cfg(test)]
+use std::cell::RefCell;
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use std::path::PathBuf; // Import Task from models module
@@ -19,6 +21,59 @@ pub trait TaskStorage {
     fn write_task(&self, task: Task) -> Result<(), Error>;
     fn remove_task(&self, id: &str) -> Result<(), Error>;
     fn update_task(&self, id: &str, status: TaskStatus, description: &str) -> Result<(), Error>;
+}
+
+#[cfg(test)]
+#[allow(dead_code)]
+pub struct MockStorage {
+    pub tasks: RefCell<Vec<Option<Task>>>,
+    pub should_have_write_error: bool,
+}
+
+#[cfg(test)]
+impl TaskStorage for MockStorage {
+    fn load_tasks(&self) -> Result<Vec<Task>, Error> {
+        let mut storage = self.tasks.borrow_mut();
+        let tasks: Vec<Task> = storage.iter_mut().filter_map(|x| x.take()).collect();
+        Ok(tasks)
+    }
+
+    fn write_task(&self, task: Task) -> Result<(), Error> {
+        let mut storage = self.tasks.borrow_mut();
+        storage.push(Some(task));
+        if self.should_have_write_error {
+            Err(anyhow!("Write error occurred."))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn remove_task(&self, id: &str) -> Result<(), Error> {
+        let mut tasks = self.tasks.borrow_mut();
+        tasks.retain(|slot| match slot {
+            Some(task) => task.id.to_string() != id,
+            None => false,
+        });
+        Ok(())
+    }
+
+    fn update_task(&self, id: &str, status: TaskStatus, description: &str) -> Result<(), Error> {
+        if let Some(task_to_update) = self
+            .tasks
+            .borrow_mut()
+            .iter_mut()
+            .find_map(|slot| match slot {
+                Some(task) if task.id.to_string() == id => Some(task),
+                _ => None,
+            })
+        {
+            task_to_update.status = status;
+            task_to_update.description = description.to_string();
+            Ok(())
+        } else {
+            Err(anyhow!("Not found"))
+        }
+    }
 }
 
 impl FileStorage {
