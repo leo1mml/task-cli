@@ -144,7 +144,7 @@ impl Cli {
         match code {
             'a' => self.make_add_command(),
             'l' => Some(Command::List),
-            'd' => todo!("Make delete command. It will require navigating through the list."),
+            'd' => self.make_delete_command(),
             'u' => todo!("Make update command. It will require navigating through the list."),
             _ => None,
         }
@@ -173,6 +173,10 @@ impl Cli {
             status,
             description,
         })
+    }
+
+    fn make_delete_command(&self) -> Option<Command> {
+        todo!()
     }
 }
 
@@ -207,24 +211,86 @@ pub fn wait_for_any_key() -> Result<(), Error> {
 
 #[cfg(test)]
 mod tests {
-    use crate::storage::FileStorage;
+    use anyhow::anyhow;
+    use std::cell::RefCell;
+
+    use crate::storage::TaskStorage;
 
     use super::*;
+
+    struct MockStorage {
+        tasks: RefCell<Vec<Option<Task>>>,
+        should_have_write_error: bool,
+    }
+    impl TaskStorage for MockStorage {
+        fn load_tasks(&self) -> Result<Vec<Task>, Error> {
+            let mut storage = self.tasks.borrow_mut();
+            let tasks: Vec<Task> = storage.iter_mut().filter_map(|x| x.take()).collect();
+            Ok(tasks)
+        }
+
+        fn write_task(&self, task: Task) -> Result<(), Error> {
+            let mut storage = self.tasks.borrow_mut();
+            storage.push(Some(task));
+            if self.should_have_write_error {
+                Err(anyhow!("Write error occurred."))
+            } else {
+                Ok(())
+            }
+        }
+
+        fn remove_task(&self, id: &str) -> Result<(), Error> {
+            let mut tasks = self.tasks.borrow_mut();
+            tasks.retain(|slot| match slot {
+                Some(task) => task.id.to_string() != id,
+                None => false,
+            });
+            Ok(())
+        }
+
+        fn update_task(
+            &self,
+            id: &str,
+            status: TaskStatus,
+            description: &str,
+        ) -> Result<(), Error> {
+            if let Some(task_to_update) =
+                self.tasks
+                    .borrow_mut()
+                    .iter_mut()
+                    .find_map(|slot| match slot {
+                        Some(task) if task.id.to_string() == id => Some(task),
+                        _ => None,
+                    })
+            {
+                task_to_update.status = status;
+                task_to_update.description = description.to_string();
+                Ok(())
+            } else {
+                Err(anyhow!("Not found"))
+            }
+        }
+    }
+
     #[test]
-    fn should_add_new_item() {
-        let cli = Cli::parse();
-        let task_storage = storage::FileStorage {
-            qualifier: "com".to_string(),
-            organization: "leo1mml".to_string(),
-            application: "task_cli".to_string(),
-            data_file_name: "test_file".to_string(),
+    fn should_add_new_item() -> Result<(), Error> {
+        let cli = Cli { command: None };
+        let task_storage = MockStorage {
+            tasks: vec![].into(),
+            should_have_write_error: false,
         };
-        let _ = cli.run_command(
+        let result = cli.run_command(
             Command::Add {
                 status: (TaskStatus::Todo),
                 description: ("Test adding something".to_string()),
             },
             &task_storage,
         );
+        assert!(result.is_ok());
+        let tasks = task_storage.load_tasks()?;
+        assert!(!tasks.is_empty());
+        assert_eq!(tasks.len(), 1);
+        assert_eq!(tasks.first().unwrap().description, "Test adding something");
+        Ok(())
     }
 }
