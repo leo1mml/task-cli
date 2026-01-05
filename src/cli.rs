@@ -11,7 +11,6 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, is_raw_mode_enabled},
 };
 use std::io::stdin;
-use std::str::FromStr;
 
 pub trait CliInteraction {
     fn loop_for_commands<T: storage::TaskStorage>(&self, task_storage: &T);
@@ -154,7 +153,7 @@ impl Cli {
         message_handler::clear_and_reset();
         message_handler::ask_for_status();
         let status = match self.listen_for_key() {
-            Ok(code) => TaskStatus::from_str(&code.to_string()).ok(),
+            Ok(code) => self.convert(&code.to_string()),
             Err(_) => {
                 message_handler::print_invalid_value();
                 _ = wait_for_any_key();
@@ -173,6 +172,16 @@ impl Cli {
             status,
             description,
         })
+    }
+
+    fn convert(&self, status: &str) -> Option<TaskStatus> {
+        match status {
+            "1" => Some(TaskStatus::Todo),
+            "2" => Some(TaskStatus::InProgress),
+            "3" => Some(TaskStatus::Blocked),
+            "4" => Some(TaskStatus::Done),
+            _ => None,
+        }
     }
 
     fn make_delete_command(&self) -> Option<Command> {
