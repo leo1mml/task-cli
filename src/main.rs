@@ -1,11 +1,9 @@
-mod cli;
-mod models;
-mod storage;
-mod utils;
-
 use anyhow::Error;
-use clap::Parser;
-use cli::{Cli, CliInteraction};
+use task_cli::{
+    self,
+    cli::{Cli, CliInteraction},
+    storage,
+};
 
 const QUALIFIER: &str = "com";
 const ORGANIZATION: &str = "leo1mml";
@@ -13,7 +11,7 @@ const APPLICATION: &str = "task-cli";
 const DATA_FILE_NAME: &str = "tasks.json";
 
 fn main() -> Result<(), Error> {
-    let mut cli = Cli::parse();
+    let mut cli = Cli::initialize();
     let task_storage = storage::FileStorage {
         qualifier: QUALIFIER.to_string(),
         organization: ORGANIZATION.to_string(),

@@ -28,6 +28,12 @@ pub struct Cli {
     pub command: Option<Command>,
 }
 
+impl Cli {
+    pub fn initialize() -> Self {
+        Self::parse()
+    }
+}
+
 #[derive(Debug, Subcommand)]
 pub enum Command {
     Add {
