@@ -2,7 +2,7 @@ mod message_handler;
 
 use crate::{
     models::{Task, TaskStatus},
-    storage,
+    storage::{self, FileStorage},
 };
 use anyhow::Error;
 use clap::{Parser, Subcommand};
@@ -13,6 +13,7 @@ use crossterm::{
 use std::io::stdin;
 
 pub trait CliInteraction {
+    fn run_or_loop(&mut self, storage: &FileStorage) -> Result<(), anyhow::Error>;
     fn loop_for_commands<T: storage::TaskStorage>(&self, task_storage: &T);
     fn run_command<T: storage::TaskStorage>(
         &self,
@@ -58,6 +59,15 @@ pub enum Command {
 }
 
 impl CliInteraction for Cli {
+    fn run_or_loop(&mut self, storage: &FileStorage) -> Result<(), anyhow::Error> {
+        if let Some(command) = self.command.take() {
+            self.run_command(command, storage)
+        } else {
+            self.loop_for_commands(storage);
+            Ok(())
+        }
+    }
+
     fn loop_for_commands<T: storage::TaskStorage>(&self, task_storage: &T) {
         loop {
             match self.read_command() {

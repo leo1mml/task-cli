@@ -8,6 +8,11 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use std::path::PathBuf; // Import Task from models module
 
+const QUALIFIER: &str = "com";
+const ORGANIZATION: &str = "leo1mml";
+const APPLICATION: &str = "task-cli";
+const DATA_FILE_NAME: &str = "tasks.json";
+
 #[derive(Debug)]
 pub struct FileStorage {
     pub qualifier: String,
@@ -23,6 +28,16 @@ pub trait TaskStorage {
     fn update_task(&self, id: &str, status: TaskStatus, description: &str) -> Result<(), Error>;
 }
 
+impl FileStorage {
+    pub fn new_default() -> Self {
+        Self {
+            qualifier: QUALIFIER.to_string(),
+            organization: ORGANIZATION.to_string(),
+            application: APPLICATION.to_string(),
+            data_file_name: DATA_FILE_NAME.to_string(),
+        }
+    }
+}
 #[cfg(test)]
 #[allow(dead_code)]
 pub struct MockStorage {
